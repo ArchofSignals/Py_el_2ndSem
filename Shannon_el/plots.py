@@ -1,5 +1,6 @@
 """Matplotlib helpers for the Shannon capacity GUI."""
 
+import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
@@ -90,3 +91,79 @@ class CapacityPlot:
         )
         self.hover_annotation.set_visible(True)
         self.canvas.draw_idle()
+
+
+class ChannelSimulatorPlot:
+    """Embedded plots for link-budget and fading simulations."""
+
+    def __init__(self, parent):
+        self.figure = Figure(figsize=(6, 4), dpi=100)
+        self.axes = self.figure.add_subplot(111)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=parent)
+        self.widget = self.canvas.get_tk_widget()
+
+    def draw_capacity_distance(self, distances_m, capacities_bps, environment_name):
+        capacities_mbps = np.maximum(np.asarray(capacities_bps) / 1e6, 0)
+
+        self.axes.clear()
+        self.axes.semilogx(
+            distances_m,
+            capacities_mbps,
+            color="#287c71",
+            linewidth=2,
+        )
+        self.axes.set_title(f"Capacity vs Distance ({environment_name})")
+        self.axes.set_xlabel("Distance (m, log scale)")
+        self.axes.set_ylabel("Capacity (Mbps)")
+        self.axes.set_xlim(float(np.min(distances_m)), float(np.max(distances_m)))
+        self.axes.set_ylim(bottom=0)
+        self.axes.grid(True, linestyle="--", alpha=0.45)
+        self.axes.grid(True, which="minor", linestyle=":", alpha=0.22)
+        self.figure.tight_layout()
+        self.canvas.draw()
+
+    def draw_fading_time(self, capacities_bps, fading_name, average_capacity_bps):
+        samples = np.arange(1, len(capacities_bps) + 1)
+
+        self.axes.clear()
+        self.axes.plot(
+            samples,
+            np.asarray(capacities_bps) / 1e6,
+            color="#7b3f98",
+            linewidth=1.4,
+            label="Instantaneous capacity",
+        )
+        self.axes.axhline(
+            average_capacity_bps / 1e6,
+            color="#d16f2f",
+            linestyle="--",
+            linewidth=1.8,
+            label="Average capacity",
+        )
+        self.axes.set_title(f"Time-Domain Fading Capacity ({fading_name})")
+        self.axes.set_xlabel("Sample")
+        self.axes.set_ylabel("Capacity (Mbps)")
+        self.axes.grid(True, linestyle="--", alpha=0.45)
+        self.axes.legend(loc="best")
+        self.figure.tight_layout()
+        self.canvas.draw()
+
+    def draw_outage_probability(self, thresholds_bps, probabilities):
+        probabilities = np.clip(np.asarray(probabilities), 0, 1)
+
+        self.axes.clear()
+        self.axes.plot(
+            np.asarray(thresholds_bps) / 1e6,
+            probabilities,
+            color="#b13f53",
+            linewidth=2,
+            drawstyle="steps-post",
+        )
+        self.axes.set_title("Outage Probability")
+        self.axes.set_xlabel("Capacity threshold (Mbps)")
+        self.axes.set_ylabel("P(capacity below threshold)")
+        self.axes.set_xlim(left=0)
+        self.axes.set_ylim(-0.02, 1.02)
+        self.axes.grid(True, linestyle="--", alpha=0.45)
+        self.figure.tight_layout()
+        self.canvas.draw()
